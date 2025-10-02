@@ -15,9 +15,10 @@ const tonconnect = new TonConnectServer({
 
 const hostname = process.env.HOSTNAME;
 const PORT = process.env.PORT || 3000;
-const allowedAddress = process.env.ALLOWED_ADDRESS;
 
-// Generate auth request
+// Memory storage for connected addresses (replace with DB in production)
+let connectedUsers = [];
+
 app.get('/auth-request', (req, res) => {
   const request = tonconnect.createRequest({
     image_url: 'https://ddejfvww7sqtk.cloudfront.net/images/landing/ton-nft-tegro-dog/avatar/image_d0315e1461.jpg',
@@ -32,7 +33,6 @@ app.get('/auth-request', (req, res) => {
   res.json({ request, deeplinkURL });
 });
 
-// Callback endpoint
 app.get('/tonconnect', async (req, res) => {
   try {
     const response = tonconnect.decodeResponse(req.query.tonlogin);
@@ -44,18 +44,27 @@ app.get('/tonconnect', async (req, res) => {
       }
     }
 
-    if(connectedAddress === allowedAddress){
-      console.log("✅ Correct wallet connected:", connectedAddress);
-      res.send("Connected to the correct wallet!");
+    if(connectedAddress){
+      if(!connectedUsers.includes(connectedAddress)){
+        connectedUsers.push(connectedAddress);
+      }
+
+      console.log("✅ User connected:", connectedAddress);
+      console.log("All connected users:", connectedUsers);
+      res.send(`Wallet connected: ${connectedAddress}`);
     } else {
-      console.log("❌ Unauthorized wallet tried to connect:", connectedAddress);
-      res.send("This wallet is not authorized.");
+      res.status(400).send('Wallet not found');
     }
 
   } catch (err) {
     console.log(err);
     res.status(400).send('Verification failed');
   }
+});
+
+// Optional endpoint to get all connected addresses
+app.get('/connected-users', (req, res) => {
+  res.json(connectedUsers);
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
